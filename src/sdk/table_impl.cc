@@ -447,7 +447,7 @@ void TableImpl::ScanCallBack(ScanTask* scan_task,
     if (err == kTabletNodeOk
         || err == kSnapshotNotExist
         || scan_task->RetryTimes() >= static_cast<uint32_t>(FLAGS_tera_sdk_retry_times)) {
-        if (err == kKeyNotInRange || err == kConnectError) {
+        if (err == kKeyNotInRange) {
             ScheduleUpdateMeta(stream->GetScanDesc()->GetStartRowKey(),
                                scan_task->GetMetaTimeStamp());
         }

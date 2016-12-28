@@ -233,7 +233,7 @@ DEFINE_int32(tera_sdk_rpc_limit_max_inflow, 10, "the max bandwidth (in MB/s) for
 DEFINE_int32(tera_sdk_rpc_limit_max_outflow, 10, "the max bandwidth (in MB/s) for sdk rpc traffic limitation on output flow");
 DEFINE_int32(tera_sdk_rpc_max_pending_buffer_size, 200, "max pending buffer size (in MB) for sdk rpc");
 DEFINE_int32(tera_sdk_rpc_work_thread_num, 8, "thread num of sdk rpc client");
-DEFINE_int32(tera_sdk_update_meta_internal, 10000, "the sdk update meta table internal time(ms)");
+DEFINE_int32(tera_sdk_update_meta_internal, 200, "the sdk update meta table internal time(ms)");
 DEFINE_int32(tera_sdk_check_timer_internal, 100, "the sdk check the resend quest queue internal time");
 DEFINE_int32(tera_sdk_timeout, 60000, "timeout of wait in sync reader&mutation mode");
 DEFINE_int32(tera_sdk_delay_send_internal, 2, "the sdk resend the request internal time(s)");
