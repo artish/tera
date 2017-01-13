@@ -48,7 +48,8 @@ DECLARE_int32(tera_sdk_read_send_interval);
 DECLARE_int64(tera_sdk_max_mutation_pending_num);
 DECLARE_int64(tera_sdk_max_reader_pending_num);
 DECLARE_bool(tera_sdk_async_blocking_enabled);
-DECLARE_int32(tera_sdk_timeout);
+DECLARE_int32(tera_sdk_write_timeout);
+DECLARE_int32(tera_sdk_read_timeout);
 DECLARE_int32(tera_sdk_scan_buffer_limit);
 DECLARE_int32(tera_sdk_update_meta_concurrency);
 DECLARE_int32(tera_sdk_update_meta_buffer_limit);
@@ -67,7 +68,8 @@ TableImpl::TableImpl(const std::string& table_name,
     : name_(table_name),
       create_time_(0),
       last_sequence_id_(0),
-      timeout_(FLAGS_tera_sdk_timeout),
+      write_timeout_(FLAGS_tera_sdk_write_timeout),
+      read_timeout_(FLAGS_tera_sdk_read_timeout),
       commit_size_(FLAGS_tera_sdk_batch_size),
       write_commit_timeout_(FLAGS_tera_sdk_write_send_interval),
       read_commit_timeout_(FLAGS_tera_sdk_read_send_interval),
@@ -521,7 +523,8 @@ void TableImpl::DistributeMutations(const std::vector<RowMutationImpl*>& mu_list
             RowMutationImpl* row_mutation = (RowMutationImpl*)mu_list[i];
             if (!row_mutation->IsAsync()) {
                 sync_mu_list.push_back(row_mutation);
-                int64_t row_timeout = row_mutation->TimeOut() > 0 ? row_mutation->TimeOut() : timeout_;
+                int64_t row_timeout = 
+									row_mutation->TimeOut() > 0 ? row_mutation->TimeOut() : write_timeout_;
                 if (row_timeout > 0 && (sync_min_timeout <= 0 || sync_min_timeout > row_timeout)) {
                     sync_min_timeout = row_timeout;
                 }
@@ -539,7 +542,7 @@ void TableImpl::DistributeMutations(const std::vector<RowMutationImpl*>& mu_list
             if (!row_mutation->IsAsync()) {
                 row_timeout = sync_min_timeout;
             } else {
-                row_timeout = row_mutation->TimeOut() > 0 ? row_mutation->TimeOut() : timeout_;
+                row_timeout = row_mutation->TimeOut() > 0 ? row_mutation->TimeOut() : write_timeout_;
             }
             SdkTask::TimeoutFunc task = boost::bind(&TableImpl::MutationTimeout, this, _1);
             task_pool_.PutTask(row_mutation, row_timeout, task);
@@ -870,12 +873,12 @@ void TableImpl::MutationTimeout(SdkTask* task) {
     if (row_mutation->RetryTimes() == 0) {
         perf_counter_.mutate_queue_timeout_cnt.Inc();
         std::string err_reason = StringFormat("commit %lld times, retry 0 times, in %u ms.",
-                                              row_mutation->GetCommitTimes(), timeout_);
+                                              row_mutation->GetCommitTimes(), write_timeout_);
         row_mutation->SetError(ErrorCode::kTimeout, err_reason);
     } else {
         std::string err_reason = StringFormat("commit %lld times, retry %u times, in %u ms. last error: %s",
                                               row_mutation->GetCommitTimes(), row_mutation->RetryTimes(),
-                                              timeout_, StatusCodeToString(err).c_str());
+                                              write_timeout_, StatusCodeToString(err).c_str());
         row_mutation->SetError(ErrorCode::kSystem, err_reason);
     }
     // only for flow control
@@ -910,7 +913,7 @@ void TableImpl::DistributeReaders(const std::vector<RowReaderImpl*>& row_reader_
                 continue;
             }
             sync_reader_list.push_back(row_reader);
-            int64_t row_timeout = row_reader->TimeOut() > 0 ? row_reader->TimeOut() : timeout_;
+            int64_t row_timeout = row_reader->TimeOut() > 0 ? row_reader->TimeOut() : read_timeout_;
             if (row_timeout > 0 && (sync_min_timeout <= 0 || sync_min_timeout > row_timeout)) {
                 sync_min_timeout = row_timeout;
             }
@@ -925,7 +928,7 @@ void TableImpl::DistributeReaders(const std::vector<RowReaderImpl*>& row_reader_
 
             int64_t row_timeout = sync_min_timeout;
             if (row_reader->IsAsync()) {
-                row_timeout = row_reader->TimeOut() > 0 ? row_reader->TimeOut() : timeout_;
+                row_timeout = row_reader->TimeOut() > 0 ? row_reader->TimeOut() : read_timeout_;
             }
             SdkTask::TimeoutFunc task = boost::bind(&TableImpl::ReaderTimeout, this, _1);
             task_pool_.PutTask(row_reader, row_timeout, task);
@@ -1233,12 +1236,12 @@ void TableImpl::ReaderTimeout(SdkTask* task) {
     if (row_reader->RetryTimes() == 0) {
         perf_counter_.reader_queue_timeout_cnt.Inc();
         std::string err_reason = StringFormat("commit %lld times, retry 0 times, in %u ms.",
-                                              row_reader->GetCommitTimes(), timeout_);
+                                              row_reader->GetCommitTimes(), read_timeout_);
         row_reader->SetError(ErrorCode::kTimeout, err_reason);
     } else {
         std::string err_reason = StringFormat("commit %lld times, retry %u times, in %u ms. last error: %s",
                                               row_reader->GetCommitTimes(),  row_reader->RetryTimes(),
-                                              timeout_, StatusCodeToString(err).c_str());
+                                              read_timeout_, StatusCodeToString(err).c_str());
         row_reader->SetError(ErrorCode::kSystem, err_reason);
     }
     int64_t perf_time = common::timer::get_micros();

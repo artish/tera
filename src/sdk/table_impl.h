@@ -411,7 +411,8 @@ private:
     std::string name_;
     int64_t create_time_;
     uint64_t last_sequence_id_;
-    uint32_t timeout_;
+    uint32_t write_timeout_;
+    uint32_t read_timeout_;
 
     mutable Mutex mutation_batch_mutex_;
     mutable Mutex reader_batch_mutex_;
