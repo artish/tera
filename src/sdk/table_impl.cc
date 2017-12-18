@@ -317,8 +317,10 @@ bool TableImpl::Get(const std::string& row_key, const std::string& family,
     *err = row_reader->GetError();
     if (err->GetType() == ErrorCode::kOK) {
         *value = row_reader->Value();
+        delete row_reader;
         return true;
     }
+    delete row_reader;
     return false;
 }
 
