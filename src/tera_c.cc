@@ -160,6 +160,7 @@ bool tera_table_put_kv(tera_table_t* table, const char* key, uint64_t keylen,
     RowMutation* mutation = table->rep->NewRowMutation(key);
     mutation->Put(val_str, ttl);
     table->rep->ApplyMutation(mutation);
+    delete mutation;
     if (SaveError(errptr, err)) {
         return false;
     }
@@ -189,6 +190,7 @@ bool tera_table_delete(tera_table_t* table, const char* row_key, uint64_t keylen
     RowMutation* mutation = table->rep->NewRowMutation(key_str);
     mutation->DeleteColumn(family, qu_str);
     table->rep->ApplyMutation(mutation);
+    delete mutation;
     if (SaveError(NULL, err)) {
         return false;
     }
