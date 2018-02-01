@@ -154,16 +154,16 @@ bool tera_table_put(tera_table_t* table,
 bool tera_table_put_kv(tera_table_t* table, const char* key, uint64_t keylen,
                        const char* value, uint64_t vallen, int32_t ttl,
                        char** errptr) {
-    ErrorCode err;
     std::string key_str(key, keylen);
     std::string val_str(value, vallen);
     RowMutation* mutation = table->rep->NewRowMutation(key);
     mutation->Put(val_str, ttl);
     table->rep->ApplyMutation(mutation);
-    delete mutation;
-    if (SaveError(errptr, err)) {
-        return false;
+    if (mutation->GetError().GetType() == ErrorCode::kOK) {
+        delete mutation;
+        return true;
     }
+    delete mutation;
     return true;
 }
 
@@ -184,16 +184,16 @@ bool tera_table_putint64(tera_table_t* table,
 
 bool tera_table_delete(tera_table_t* table, const char* row_key, uint64_t keylen,
                        const char* family, const char* qualifier, uint64_t qulen) {
-    ErrorCode err;
     std::string key_str(row_key, keylen);
     std::string qu_str(qualifier, qulen);
     RowMutation* mutation = table->rep->NewRowMutation(key_str);
     mutation->DeleteColumn(family, qu_str);
     table->rep->ApplyMutation(mutation);
-    delete mutation;
-    if (SaveError(NULL, err)) {
+    if (SaveError(NULL, mutation->GetError())) {
+        delete mutation;
         return false;
     }
+    delete mutation;
     return true;
 }
 
